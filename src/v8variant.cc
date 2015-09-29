@@ -282,7 +282,12 @@ NAN_METHOD(V8Variant::OLEUtf8)
       NanNew<String>("OLEUtf8 source type OCVariant is not VT_BSTR")));
   Handle<Value> result;
   if(!ocv->v.bstrVal) result = NanUndefined(); // or Null();
-  else result = NanNew<String>(MBCS2UTF8(BSTR2MBCS(ocv->v.bstrVal)).c_str());
+  else {
+    std::wstring wstr(ocv->v.bstrVal);
+    char *cs = wcs2u8s(wstr.c_str());
+    result = NanNew<String>(cs);
+    free(cs);
+  }
   DISPFUNCOUT();
   NanReturnValue(result);
 }

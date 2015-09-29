@@ -35,7 +35,7 @@ string to_s(int num)
   return ossnum.str(); // create new string
 }
 
-wchar_t *u8s2wcs(char *u8s)
+wchar_t *u8s2wcs(const char *u8s)
 {
   size_t u8len = strlen(u8s);
   size_t wclen = MultiByteToWideChar(CP_UTF8, 0, u8s, u8len, NULL, 0);
@@ -45,12 +45,23 @@ wchar_t *u8s2wcs(char *u8s)
   return wcs; // ucs2 *** must be free later ***
 }
 
-char *wcs2mbs(wchar_t *wcs)
+char *wcs2mbs(const wchar_t *wcs)
 {
   size_t mblen = WideCharToMultiByte(GetACP(), 0,
     (LPCWSTR)wcs, -1, NULL, 0, NULL, NULL);
   char *mbs = (char *)malloc((mblen + 1));
   mblen = WideCharToMultiByte(GetACP(), 0,
+    (LPCWSTR)wcs, -1, mbs, mblen, NULL, NULL); // not + 1
+  mbs[mblen] = '\0';
+  return mbs; // locale mbs *** must be free later ***
+}
+
+char *wcs2u8s(const wchar_t *wcs)
+{
+  size_t mblen = WideCharToMultiByte(CP_UTF8, 0,
+    (LPCWSTR)wcs, -1, NULL, 0, NULL, NULL);
+  char *mbs = (char *)malloc((mblen + 1));
+  mblen = WideCharToMultiByte(CP_UTF8, 0,
     (LPCWSTR)wcs, -1, mbs, mblen, NULL, NULL); // not + 1
   mbs[mblen] = '\0';
   return mbs; // locale mbs *** must be free later ***
