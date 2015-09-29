@@ -4,6 +4,8 @@
 
 #include "client.h"
 #include "v8variant.h"
+#include <node.h>
+#include <nan.h>
 
 using namespace v8;
 using namespace ole32core;
@@ -14,36 +16,36 @@ Persistent<FunctionTemplate> Client::clazz;
 
 void Client::Init(Handle<Object> target)
 {
-  HandleScope scope;
-  Local<FunctionTemplate> t = FunctionTemplate::New(New);
-  clazz = Persistent<FunctionTemplate>::New(t);
-  clazz->InstanceTemplate()->SetInternalFieldCount(2);
-  clazz->SetClassName(String::NewSymbol("Client"));
+  NanScope();
+  Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
+  t->InstanceTemplate()->SetInternalFieldCount(2);
+  t->SetClassName(NanNew<String>("Client"));
 //  NODE_SET_PROTOTYPE_METHOD(clazz, "New", New);
-  NODE_SET_PROTOTYPE_METHOD(clazz, "Dispatch", Dispatch);
-  NODE_SET_PROTOTYPE_METHOD(clazz, "Finalize", Finalize);
-  target->Set(String::NewSymbol("Client"), clazz->GetFunction());
+  NODE_SET_PROTOTYPE_METHOD(t, "Dispatch", Dispatch);
+  NODE_SET_PROTOTYPE_METHOD(t, "Finalize", Finalize);
+  target->Set(NanNew<String>("Client"), t->GetFunction());
+  NanAssignPersistent(clazz, t);
 }
 
-Handle<Value> Client::New(const Arguments& args)
+NAN_METHOD(Client::New)
 {
-  HandleScope scope;
+  NanScope();
   DISPFUNCIN();
   if(!args.IsConstructCall())
-    return ThrowException(Exception::TypeError(
-      String::New("Use the new operator to create new Client objects")));
+    NanThrowError(Exception::TypeError(
+      NanNew<String>("Use the new operator to create new Client objects")));
   std::string cstr_locale(".ACP"); // default
   if(args.Length() >= 1){
     if(!args[0]->IsString())
-      return ThrowException(Exception::TypeError(
-        String::New("Argument 1 is not a String")));
+      NanThrowError(Exception::TypeError(
+        NanNew<String>("Argument 1 is not a String")));
     String::Utf8Value u8s_locale(args[0]);
     cstr_locale = std::string(*u8s_locale);
   }
   OLE32core *oc = new OLE32core();
   if(!oc)
-    return ThrowException(Exception::TypeError(
-      String::New("Can't create new Client object (null OLE32core)")));
+    NanThrowError(Exception::TypeError(
+      NanNew<String>("Can't create new Client object (null OLE32core)")));
   bool cnresult = false;
   try{
     cnresult = oc->connect(cstr_locale);
@@ -53,21 +55,20 @@ Handle<Value> Client::New(const Arguments& args)
     std::cerr << e << cstr_locale.c_str() << std::endl;
   }
   if(!cnresult)
-    return ThrowException(Exception::TypeError(
-      String::New("May be CoInitialize() is failed.")));
+    NanThrowError(Exception::TypeError(
+      NanNew<String>("May be CoInitialize() is failed.")));
   Local<Object> thisObject = args.This();
   Client *cl = new Client(); // must catch exception
   cl->Wrap(thisObject); // InternalField[0]
-  thisObject->SetInternalField(1, External::New(oc));
-  Persistent<Object> objectDisposer = Persistent<Object>::New(thisObject);
-  objectDisposer.MakeWeak(oc, Dispose);
+  thisObject->SetInternalField(1, NanNew(oc));
+  NanMakeWeakPersistent(thisObject, oc, Dispose);
   DISPFUNCOUT();
-  return args.This();
+  NanReturnValue(args.This());
 }
 
-Handle<Value> Client::Dispatch(const Arguments& args)
+NAN_METHOD(Client::Dispatch)
 {
-  HandleScope scope;
+  NanScope();
   DISPFUNCIN();
   BEVERIFY(done, args.Length() >= 1);
   BEVERIFY(done, args[0]->IsString());
@@ -108,13 +109,6 @@ Handle<Value> Client::Dispatch(const Arguments& args)
   // (OLE2) CoCreateInstance() returns 0x000003f0
   //   An attempt was made to reference a token that does not exist.
   REFIID riid = IID_IDispatch; // can't connect to Excel etc with IID_IUnknown
-#ifdef DEBUG // obsolete (it needs that OLE target has been already executed)
-  IUnknown *pUnk;
-  hr = GetActiveObject(clsid, NULL, (IUnknown **)&pUnk);
-  BEVERIFY(done, !FAILED(hr));
-  hr = pUnk->QueryInterface(riid, (void **)&app->v.pdispVal);
-  pUnk->Release();
-#else
   // C -> C++ changes types (&clsid -> clsid, &IID_IDispatch -> IID_IDispatch)
   // options (CLSCTX_INPROC_SERVER CLSCTX_INPROC_HANDLER CLSCTX_LOCAL_SERVER)
   DWORD ctx = CLSCTX_INPROC_SERVER|CLSCTX_LOCAL_SERVER;
@@ -130,19 +124,18 @@ Handle<Value> Client::Dispatch(const Arguments& args)
 #endif
     hr = CoCreateInstance(clsid, NULL, ctx, riid, (void **)&app->v.pdispVal);
   }
-#endif
   if(FAILED(hr)) BDISPFUNCDAT("FAILED CoCreateInstance: %d: 0x%08x\n", 1, hr);
   BEVERIFY(done, !FAILED(hr));
   DISPFUNCOUT();
-  return scope.Close(vApp);
+  NanReturnValue(vApp);
 done:
   DISPFUNCOUT();
-  return ThrowException(Exception::TypeError(String::New("Dispatch failed")));
+  NanThrowError(Exception::TypeError(NanNew<String>("Dispatch failed")));
 }
 
-Handle<Value> Client::Finalize(const Arguments& args)
+NAN_METHOD(Client::Finalize)
 {
-  HandleScope scope;
+  NanScope();
   DISPFUNCIN();
 #if(0)
   std::cerr << __FUNCTION__ << " Finalizer is called\a" << std::endl;
@@ -154,7 +147,7 @@ Handle<Value> Client::Finalize(const Arguments& args)
   if(cl) delete cl; // it has been already deleted ?
   thisObject->SetInternalField(0, External::New(NULL));
 #endif
-#if(1) // now GC will call Disposer automatically
+#if(0) // now GC will call Disposer automatically
   OLE32core *oc = castedInternalField<OLE32core>(thisObject);
   if(oc){
     try{
@@ -164,13 +157,14 @@ Handle<Value> Client::Finalize(const Arguments& args)
     }
   }
 #endif
-  thisObject->SetInternalField(1, External::New(NULL));
+  thisObject->SetInternalField(1, ExternalNew(NULL));
   DISPFUNCOUT();
-  return args.This();
+  NanReturnValue(args.This());
 }
 
-void Client::Dispose(Persistent<Value> handle, void *param)
+NAN_WEAK_CALLBACK(Client::Dispose)
 {
+  Handle<Object> handle = data.GetValue();
   DISPFUNCIN();
 #if(0)
 //  std::cerr << __FUNCTION__ << " Disposer is called\a" << std::endl;
@@ -195,7 +189,7 @@ void Client::Dispose(Persistent<Value> handle, void *param)
     std::cerr.flush();
   }
 //  else{
-    OLE32core *oc = static_cast<OLE32core *>(param); // oc may be same as p
+    OLE32core *oc = data.GetParameter(); // oc may be same as p
     if(oc){
       try{
         delete oc; // will call oc->disconnect();
@@ -205,9 +199,8 @@ void Client::Dispose(Persistent<Value> handle, void *param)
     }
 //  }
   BEVERIFY(done, thisObject->InternalFieldCount() > 1);
-  thisObject->SetInternalField(1, External::New(NULL));
+  thisObject->SetInternalField(1, ExternalNew(NULL));
 done:
-  handle.Dispose();
   DISPFUNCOUT();
 }
 

@@ -3,6 +3,7 @@
 
 #include <node_buffer.h>
 #include <node.h>
+#include <nan.h>
 #include <v8.h>
 
 using namespace v8;
@@ -11,11 +12,11 @@ namespace node_win32ole {
 
 #define CHECK_OCV(ocv) do{ \
     if(!(ocv)) \
-      return ThrowException(Exception::TypeError(String::New( \
+      NanThrowError(Exception::TypeError(NanNew( \
         __FUNCTION__" can't access to V8Variant (null OCVariant)"))); \
   }while(0)
 
-#if(0)
+#if(DEBUG)
 #define OLETRACEIN() BDISPFUNCIN()
 #define OLETRACEVT(th) do{ \
     OCVariant *ocv = castedInternalField<OCVariant>(th); \
@@ -45,7 +46,7 @@ namespace node_win32ole {
     if(!r->IsObject()){ \
       std::cerr << "** CarryOver primitive ** " << __FUNCTION__ << std::endl; \
       std::cerr.flush(); \
-      return scope.Close(r); \
+      NanReturnValue(r); \
     } \
     th = r->ToObject(); \
   }while(0)
@@ -62,15 +63,15 @@ namespace node_win32ole {
     V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(th); \
     if(v8v->property_carryover.empty()) break; \
     Handle<Value> r = V8Variant::OLEFlushCarryOver(th); \
-    if(!r->IsObject()) return scope.Close(r); \
+    if(!r->IsObject()) NanReturnValue(r); \
     th = r->ToObject(); \
   }while(0)
 #endif
 
-#define GET_PROP(obj, prop) (obj)->Get(String::NewSymbol(prop))
+#define GET_PROP(obj, prop) (obj)->Get(NanNew<String>(prop))
 
-#define ARRAY_AT(a, i) (a)->Get(String::NewSymbol(to_s(i).c_str()))
-#define ARRAY_SET(a, i, v) (a)->Set(String::NewSymbol(to_s(i).c_str()), (v))
+#define ARRAY_AT(a, i) (a)->Get(NanNew<String>(to_s(i).c_str()))
+#define ARRAY_SET(a, i, v) (a)->Set(NanNew<String>(to_s(i).c_str()), (v))
 
 #define INSTANCE_CALL(obj, method, argc, argv) Handle<Function>::Cast( \
   GET_PROP((obj), (method)))->Call((obj), (argc), (argv))
@@ -83,13 +84,10 @@ template <class T> T *castedInternalField(Handle<Object> object, int fidx=1)
 
 extern Persistent<Object> module_target;
 
-Handle<Value> Method_version(const Arguments& args);
-Handle<Value> Method_printACP(const Arguments& args); // UTF-8 to MBCS (.ACP)
-Handle<Value> Method_print(const Arguments& args); // through (as ASCII)
-Handle<Value> Method_gettimeofday(const Arguments& args);
-Handle<Value> Method_sleep(const Arguments& args); // ms, bool: msg, bool: \n
-Handle<Value> Method_force_gc_extension(const Arguments& args); // v8/gc : gc()
-Handle<Value> Method_force_gc_internal(const Arguments& args); // v8/src/v8.h
+NAN_METHOD(Method_gettimeofday);
+NAN_METHOD(Method_sleep); // ms, bool: msg, bool: \n
+NAN_METHOD(Method_force_gc_extension); // v8/gc : gc()
+NAN_METHOD(Method_force_gc_internal);
 
 } // namespace node_win32ole
 

@@ -391,10 +391,12 @@ HRESULT OCVariant::AutoWrap(int autoType, VARIANT *pvResult,
   if(FAILED(hr)){
 
 	// Convert down to ANSI (for error message only)
-	char szErrSource[256];
-	WideCharToMultiByte(CP_ACP, 0, exceptInfo.bstrSource, -1, szErrSource, sizeof(szErrSource), NULL, NULL);
+  char szErrSource[256];
+	int sourceLen = WideCharToMultiByte(CP_ACP, 0, exceptInfo.bstrSource, -1, szErrSource, sizeof(szErrSource), NULL, NULL);
 	char szErrDescription[256];
-	WideCharToMultiByte(CP_ACP, 0, exceptInfo.bstrDescription, -1, szErrDescription, sizeof(szErrDescription), NULL, NULL);
+	int descLen = WideCharToMultiByte(CP_ACP, 0, exceptInfo.bstrDescription, -1, szErrDescription, sizeof(szErrDescription), NULL, NULL);
+  szErrSource[sourceLen] = 0;
+  szErrDescription[descLen] = 0;
 
 	ostringstream oss;
     oss << hr << " [" << szName << "] = [" << dispID << "]\r\n";

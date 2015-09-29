@@ -3,6 +3,8 @@
 */
 
 #include "node_win32ole.h"
+#include <node.h>
+#include <nan.h>
 #include "ole32core.h"
 
 #ifdef _WIN32
@@ -26,9 +28,9 @@ void timeval_gettimeofday(struct timeval *ptv)
 #endif
 }
 
-Handle<Value> Method_gettimeofday(const Arguments& args)
+NAN_METHOD(Method_gettimeofday)
 {
-  HandleScope scope;
+  NanScope();
   boolean result = false;
   BEVERIFY(done, args.Length() >= 2);
   struct timeval tv;
@@ -39,30 +41,30 @@ Handle<Value> Method_gettimeofday(const Arguments& args)
   memcpy(node::Buffer::Data(buf), &tv, sizeof(struct timeval));
   result = true;
 done:
-  return scope.Close(Boolean::New(result));
+  NanReturnValue(result);
 }
 
-Handle<Value> Method_sleep(const Arguments& args) // ms, bool: msg, bool: \n
+NAN_METHOD(Method_sleep) // ms, bool: msg, bool: \n
 {
-  HandleScope scope;
+  NanScope();
   boolean result = false;
   BEVERIFY(done, args.Length() >= 1);
   if(!args[0]->IsInt32())
-    return ThrowException(Exception::TypeError(
-      String::New("type of argument 1 must be Int32")));
+    NanThrowError(Exception::TypeError(
+      NanNew<String>("type of argument 1 must be Int32")));
   long ms = args[0]->Int32Value();
   bool msg = false;
   if(args.Length() >= 2){
     if(!args[1]->IsBoolean())
-      return ThrowException(Exception::TypeError(
-        String::New("type of argument 2 must be Boolean")));
+      NanThrowError(Exception::TypeError(
+        NanNew<String>("type of argument 2 must be Boolean")));
     msg = args[1]->BooleanValue();
   }
   bool crlf = false;
   if(args.Length() >= 3){
     if(!args[2]->IsBoolean())
-      return ThrowException(Exception::TypeError(
-        String::New("type of argument 3 must be Boolean")));
+      NanThrowError(Exception::TypeError(
+        NanNew<String>("type of argument 3 must be Boolean")));
     crlf = args[2]->BooleanValue();
   }
   if(ms){
@@ -83,7 +85,7 @@ Handle<Value> Method_sleep(const Arguments& args) // ms, bool: msg, bool: \n
   }
   result = true;
 done:
-  return scope.Close(Boolean::New(result));
+  NanReturnValue(result);
 }
 
 } // namespace node_win32ole

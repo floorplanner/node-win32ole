@@ -2,6 +2,9 @@
   'targets': [
     {
       'target_name': 'node_win32ole',
+      'include_dirs': [
+        'node_modules/nan/'
+      ],
       'sources': [
         'src/node_win32ole.cc',
         'src/win32ole_gettimeofday.cc',
