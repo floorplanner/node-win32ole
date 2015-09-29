@@ -323,6 +323,58 @@ done:
   OLETRACEOUT();
 }
 
+static std::string GetName(ITypeInfo *typeinfo, MEMBERID id) {
+  BSTR name;
+  UINT numNames = 0;
+  typeinfo->GetNames(id, &name, 1, &numNames);
+  if (numNames > 0) {
+    return BSTR2MBCS(name);
+  }
+}
+
+/**
+ * Dump all available variables/methods of an OLE object.
+ **/
+NAN_METHOD(V8Variant::OLEInspect) {
+  Local<Object> thisObject = args.This();
+  OLE_PROCESS_CARRY_OVER(thisObject);
+  OLETRACEVT(thisObject);
+  OLETRACEFLUSH();
+  OCVariant *ocv = castedInternalField<OCVariant>(thisObject);
+  CHECK_OCV(ocv);
+  if (ocv->v.vt == VT_DISPATCH) {
+    IDispatch *dispatch = ocv->v.pdispVal;
+    if (dispatch == NULL) {
+      NanReturnNull();
+    }
+    Local<Object> object = NanNew<Object>();
+    ITypeInfo *typeinfo = NULL;
+    HRESULT hr = dispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &typeinfo);
+    if (typeinfo) {
+      TYPEATTR* typeattr;
+      BASSERT(SUCCEEDED(typeinfo->GetTypeAttr(&typeattr)));
+      for (int i = 0; i < typeattr->cFuncs; i++) {
+        FUNCDESC *funcdesc;
+        typeinfo->GetFuncDesc(i, &funcdesc);
+        if (funcdesc->invkind != INVOKE_FUNC) {
+          object->Set(NanNew(GetName(typeinfo, funcdesc->memid)), NanNew("Function"));
+        }
+        typeinfo->ReleaseFuncDesc(funcdesc);
+      }
+      for (int i = 0; i < typeattr->cVars; i++) {
+        VARDESC *vardesc;
+        typeinfo->GetVarDesc(i, &vardesc);
+        object->Set(NanNew(GetName(typeinfo, vardesc->memid)), NanNew("Variable"));
+        typeinfo->ReleaseVarDesc(vardesc);
+      }
+      typeinfo->ReleaseTypeAttr(typeattr);
+    }
+    NanReturnValue(object);
+  } else {
+    V8Variant::OLEValue(args);
+  }
+}
+
 Handle<Object> V8Variant::CreateUndefined(void)
 {
   DISPFUNCIN();
@@ -580,7 +632,7 @@ NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
     {!0, "toNumber", OLEValue}, {!0, "toDate", OLEValue},
     {!0, "toUtf8", OLEValue},
     {0, "toValue", OLEValue},
-    {0, "inspect", NULL}, {0, "constructor", NULL}, {0, "valueOf", OLEValue},
+    {0, "inspect", OLEInspect}, {0, "constructor", NULL}, {0, "valueOf", OLEValue},
     {0, "toString", OLEValue}, {0, "toLocaleString", OLEValue},
     {0, "hasOwnProperty", NULL}, {0, "isPrototypeOf", NULL},
     {0, "propertyIsEnumerable", NULL}

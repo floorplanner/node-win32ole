@@ -34,6 +34,7 @@ public:
   static NAN_METHOD(OLEDate); // *** p.
   static NAN_METHOD(OLEUtf8); // *** p.
   static NAN_METHOD(OLEValue);
+  static NAN_METHOD(OLEInspect);
   static Handle<Object> CreateUndefined(void); // *** private
   static NAN_METHOD(New);
   static Handle<Value> OLEFlushCarryOver(Handle<Value> v); // *** p.
