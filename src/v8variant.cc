@@ -90,12 +90,12 @@ std::string V8Variant::CreateStdStringMBCSfromUTF8(Handle<Value> v)
 
 OCVariant *V8Variant::CreateOCVariant(Handle<Value> v)
 {
-  if (v->IsNull()){
+  if (v->IsNull() || v->IsUndefined()) {
+    // todo: make separate undefined type
 		return new OCVariant();
   }
 
   BEVERIFY(done, !v.IsEmpty());
-  BEVERIFY(done, !v->IsUndefined());
   BEVERIFY(done, !v->IsExternal());
   BEVERIFY(done, !v->IsNativeError());
   BEVERIFY(done, !v->IsFunction());
@@ -371,13 +371,11 @@ Handle<Value> V8Variant::OLEFlushCarryOver(Handle<Value> v)
     int argc = sizeof(argv) / sizeof(argv[0]);
     v8v->property_carryover.erase();
     result = INSTANCE_CALL(v->ToObject(), "call", argc, argv);
-    if(!result->IsObject()){
-      OCVariant *rv = V8Variant::CreateOCVariant(result);
-      CHECK_OCV(rv);
-      OCVariant *o = castedInternalField<OCVariant>(v->ToObject());
-      CHECK_OCV(o);
-      *o = *rv; // copy and don't delete rv
-    }
+    OCVariant *rv = V8Variant::CreateOCVariant(result);
+    CHECK_OCV(rv);
+    OCVariant *o = castedInternalField<OCVariant>(v->ToObject());
+    CHECK_OCV(o);
+    *o = *rv; // copy and don't delete rv
   }
   OLETRACEOUT();
   return result;
