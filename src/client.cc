@@ -32,19 +32,19 @@ NAN_METHOD(Client::New)
   NanScope();
   DISPFUNCIN();
   if(!args.IsConstructCall())
-    NanThrowError(Exception::TypeError(
+    return NanThrowError(Exception::TypeError(
       NanNew("Use the new operator to create new Client objects")));
   std::string cstr_locale(".ACP"); // default
   if(args.Length() >= 1){
     if(!args[0]->IsString())
-      NanThrowError(Exception::TypeError(
+      return NanThrowError(Exception::TypeError(
         NanNew("Argument 1 is not a String")));
     String::Utf8Value u8s_locale(args[0]);
     cstr_locale = std::string(*u8s_locale);
   }
   OLE32core *oc = new OLE32core();
   if(!oc)
-    NanThrowError(Exception::TypeError(
+    return NanThrowError(Exception::TypeError(
       NanNew("Can't create new Client object (null OLE32core)")));
   bool cnresult = false;
   try{
@@ -55,7 +55,7 @@ NAN_METHOD(Client::New)
     std::cerr << e << cstr_locale.c_str() << std::endl;
   }
   if(!cnresult)
-    NanThrowError(Exception::TypeError(
+    return NanThrowError(Exception::TypeError(
       NanNew("May be CoInitialize() is failed.")));
   Local<Object> thisObject = args.This();
   Client *cl = new Client(); // must catch exception
