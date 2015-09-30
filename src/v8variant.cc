@@ -307,7 +307,12 @@ NAN_METHOD(V8Variant::OLEValue)
   CHECK_OCV(ocv);
   if(ocv->v.vt == VT_EMPTY) ; // do nothing
   else if (ocv->v.vt == VT_NULL) NanReturnNull();
-  else if (ocv->v.vt == VT_DISPATCH) NanReturnValue(thisObject); // through it
+  else if (ocv->v.vt == VT_DISPATCH) {
+    if (ocv->v.pdispVal == NULL) {
+      NanReturnNull();
+    }
+    NanReturnValue(thisObject); // through it
+  }
   else if(ocv->v.vt == VT_BOOL) OLEBoolean(args);
   else if(ocv->v.vt == VT_I4 || ocv->v.vt == VT_INT
   || ocv->v.vt == VT_UI4 || ocv->v.vt == VT_UINT) OLEInt32(args);
