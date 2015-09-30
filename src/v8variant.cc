@@ -338,9 +338,10 @@ static std::string GetName(ITypeInfo *typeinfo, MEMBERID id) {
 }
 
 /**
- * Dump all available variables/methods of an OLE object.
+ * Like OLEValue, but goes one step further and reduces IDispatch objects
+ * to actual JS objects. This enables things like console.log().
  **/
-NAN_METHOD(V8Variant::OLEInspect) {
+NAN_METHOD(V8Variant::OLEPrimitiveValue) {
   Local<Object> thisObject = args.This();
   OLE_PROCESS_CARRY_OVER(thisObject);
   OLETRACEVT(thisObject);
@@ -632,13 +633,13 @@ NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
   static fundamental_attr fundamentals[] = {
     {0, "call", OLECall}, {0, "get", OLEGet}, {0, "set", OLESet},
     {0, "isA", OLEIsA}, {0, "vtName", OLEVTName}, // {"vt_names", ???},
-    {!0, "toBoolean", OLEValue},
-    {!0, "toInt32", OLEValue}, {!0, "toInt64", OLEValue},
-    {!0, "toNumber", OLEValue}, {!0, "toDate", OLEValue},
-    {!0, "toUtf8", OLEValue},
+    {!0, "toBoolean", OLEBoolean},
+    {!0, "toInt32", OLEInt32}, {!0, "toInt64", OLEInt64},
+    {!0, "toNumber", OLENumber}, {!0, "toDate", OLEDate},
+    {!0, "toUtf8", OLEUtf8},
     {0, "toValue", OLEValue},
-    {0, "inspect", OLEInspect}, {0, "constructor", NULL}, {0, "valueOf", OLEValue},
-    {0, "toString", OLEValue}, {0, "toLocaleString", OLEValue},
+    {0, "inspect", OLEPrimitiveValue}, {0, "constructor", NULL}, {0, "valueOf", OLEPrimitiveValue},
+    {0, "toString", OLEPrimitiveValue}, {0, "toLocaleString", OLEPrimitiveValue},
     {0, "hasOwnProperty", NULL}, {0, "isPrototypeOf", NULL},
     {0, "propertyIsEnumerable", NULL}
   };
