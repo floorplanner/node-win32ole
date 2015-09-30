@@ -51,20 +51,20 @@ NAN_METHOD(Method_sleep) // ms, bool: msg, bool: \n
   BEVERIFY(done, args.Length() >= 1);
   if(!args[0]->IsInt32())
     NanThrowError(Exception::TypeError(
-      NanNew<String>("type of argument 1 must be Int32")));
+      NanNew("type of argument 1 must be Int32")));
   long ms = args[0]->Int32Value();
   bool msg = false;
   if(args.Length() >= 2){
     if(!args[1]->IsBoolean())
       NanThrowError(Exception::TypeError(
-        NanNew<String>("type of argument 2 must be Boolean")));
+        NanNew("type of argument 2 must be Boolean")));
     msg = args[1]->BooleanValue();
   }
   bool crlf = false;
   if(args.Length() >= 3){
     if(!args[2]->IsBoolean())
       NanThrowError(Exception::TypeError(
-        NanNew<String>("type of argument 3 must be Boolean")));
+        NanNew("type of argument 3 must be Boolean")));
     crlf = args[2]->BooleanValue();
   }
   if(ms){

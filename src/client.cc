@@ -19,11 +19,11 @@ void Client::Init(Handle<Object> target)
   NanScope();
   Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
   t->InstanceTemplate()->SetInternalFieldCount(2);
-  t->SetClassName(NanNew<String>("Client"));
+  t->SetClassName(NanNew("Client"));
 //  NODE_SET_PROTOTYPE_METHOD(clazz, "New", New);
   NODE_SET_PROTOTYPE_METHOD(t, "Dispatch", Dispatch);
   NODE_SET_PROTOTYPE_METHOD(t, "Finalize", Finalize);
-  target->Set(NanNew<String>("Client"), t->GetFunction());
+  target->Set(NanNew("Client"), t->GetFunction());
   NanAssignPersistent(clazz, t);
 }
 
@@ -33,19 +33,19 @@ NAN_METHOD(Client::New)
   DISPFUNCIN();
   if(!args.IsConstructCall())
     NanThrowError(Exception::TypeError(
-      NanNew<String>("Use the new operator to create new Client objects")));
+      NanNew("Use the new operator to create new Client objects")));
   std::string cstr_locale(".ACP"); // default
   if(args.Length() >= 1){
     if(!args[0]->IsString())
       NanThrowError(Exception::TypeError(
-        NanNew<String>("Argument 1 is not a String")));
+        NanNew("Argument 1 is not a String")));
     String::Utf8Value u8s_locale(args[0]);
     cstr_locale = std::string(*u8s_locale);
   }
   OLE32core *oc = new OLE32core();
   if(!oc)
     NanThrowError(Exception::TypeError(
-      NanNew<String>("Can't create new Client object (null OLE32core)")));
+      NanNew("Can't create new Client object (null OLE32core)")));
   bool cnresult = false;
   try{
     cnresult = oc->connect(cstr_locale);
@@ -56,11 +56,11 @@ NAN_METHOD(Client::New)
   }
   if(!cnresult)
     NanThrowError(Exception::TypeError(
-      NanNew<String>("May be CoInitialize() is failed.")));
+      NanNew("May be CoInitialize() is failed.")));
   Local<Object> thisObject = args.This();
   Client *cl = new Client(); // must catch exception
   cl->Wrap(thisObject); // InternalField[0]
-  thisObject->SetInternalField(1, NanNew(oc));
+  thisObject->SetInternalField(1, NanNew<External>(oc));
   NanMakeWeakPersistent(thisObject, oc, Dispose);
   DISPFUNCOUT();
   NanReturnValue(args.This());
@@ -130,7 +130,7 @@ NAN_METHOD(Client::Dispatch)
   NanReturnValue(vApp);
 done:
   DISPFUNCOUT();
-  NanThrowError(Exception::TypeError(NanNew<String>("Dispatch failed")));
+  NanThrowError(Exception::TypeError(NanNew("Dispatch failed")));
 }
 
 NAN_METHOD(Client::Finalize)
@@ -147,7 +147,7 @@ NAN_METHOD(Client::Finalize)
   if(cl) delete cl; // it has been already deleted ?
   thisObject->SetInternalField(0, External::New(NULL));
 #endif
-#if(0) // now GC will call Disposer automatically
+#if(1) // now GC will call Disposer automatically
   OLE32core *oc = castedInternalField<OLE32core>(thisObject);
   if(oc){
     try{

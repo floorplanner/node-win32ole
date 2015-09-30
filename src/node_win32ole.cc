@@ -20,7 +20,7 @@ NAN_METHOD(Method_version)
 {
   NanScope();
   Handle<Object> local = NanNew<Object>(module_target);
-  NanReturnValue(local->Get(NanNew<String>("VERSION")));
+  NanReturnValue(local->Get(NanNew("VERSION")));
 }
 
 NAN_METHOD(Method_printACP) // UTF-8 to MBCS (.ACP)
@@ -56,28 +56,28 @@ void init(Handle<Object> target)
   NanAssignPersistent(module_target, target);
   V8Variant::Init(target);
   Client::Init(target);
-  target->ForceSet(NanNew<String>("VERSION"),
-    NanNew<String>("0.0.0 (will be set later)"),
+  target->ForceSet(NanNew("VERSION"),
+    NanNew("0.0.0 (will be set later)"),
     static_cast<PropertyAttribute>(DontDelete));
-  target->ForceSet(NanNew<String>("MODULEDIRNAME"),
-    NanNew<String>("/tmp"),
+  target->ForceSet(NanNew("MODULEDIRNAME"),
+    NanNew("/tmp"),
     static_cast<PropertyAttribute>(DontDelete));
-  target->ForceSet(NanNew<String>("SOURCE_TIMESTAMP"),
-    NanNew<String>(__FILE__ " " __DATE__ " " __TIME__),
+  target->ForceSet(NanNew("SOURCE_TIMESTAMP"),
+    NanNew(__FILE__ " " __DATE__ " " __TIME__),
     static_cast<PropertyAttribute>(ReadOnly | DontDelete));
-  target->Set(NanNew<String>("version"),
+  target->Set(NanNew("version"),
     NanNew<FunctionTemplate>(Method_version)->GetFunction());
-  target->Set(NanNew<String>("printACP"),
+  target->Set(NanNew("printACP"),
     NanNew<FunctionTemplate>(Method_printACP)->GetFunction());
-  target->Set(NanNew<String>("print"),
+  target->Set(NanNew("print"),
     NanNew<FunctionTemplate>(Method_print)->GetFunction());
-  target->Set(NanNew<String>("gettimeofday"),
+  target->Set(NanNew("gettimeofday"),
     NanNew<FunctionTemplate>(Method_gettimeofday)->GetFunction());
-  target->Set(NanNew<String>("sleep"),
+  target->Set(NanNew("sleep"),
     NanNew<FunctionTemplate>(Method_sleep)->GetFunction());
-  target->Set(NanNew<String>("force_gc_extension"),
+  target->Set(NanNew("force_gc_extension"),
     NanNew<FunctionTemplate>(Method_force_gc_extension)->GetFunction());
-  target->Set(NanNew<String>("force_gc_internal"),
+  target->Set(NanNew("force_gc_internal"),
     NanNew<FunctionTemplate>(Method_force_gc_internal)->GetFunction());
 }
 

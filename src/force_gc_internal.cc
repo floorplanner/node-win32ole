@@ -17,10 +17,10 @@ NAN_METHOD(Method_force_gc_internal)
   std::cerr << "-in: " __FUNCTION__ << std::endl;
   if(args.Length() < 1)
     NanThrowError(Exception::TypeError(
-      NanNew<String>("this function takes at least 1 argument(s)")));
+      NanNew("this function takes at least 1 argument(s)")));
   if(!args[0]->IsInt32())
     NanThrowError(Exception::TypeError(
-      NanNew<String>("type of argument 1 must be Int32")));
+      NanNew("type of argument 1 must be Int32")));
   int flags = (int)args[0]->Int32Value();
   while (!NanIdleNotification(100)){}
   std::cerr << "-out: " __FUNCTION__ << std::endl;
