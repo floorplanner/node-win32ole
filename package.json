@@ -55,5 +55,6 @@
       "type": "BSD"
     }
   ],
-  "main": "./lib/win32ole"
+  "main": "./lib/win32ole",
+  "os": ["win32"]
 }
