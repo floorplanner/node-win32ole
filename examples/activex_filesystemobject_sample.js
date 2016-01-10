@@ -1,4 +1,4 @@
-var win32ole = require('win32ole');
+var win32ole = require('../lib/win32ole');
 win32ole.print('activex_filesystemobject_sample\n');
 
 var testfile = 'examples\\activex_filesystemobject_sample.js';

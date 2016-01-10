@@ -11,45 +11,44 @@ using namespace ole32core;
 
 namespace node_win32ole {
 
-#define CHECK_OLE_ARGS(args, n, av0, av1) do{ \
-    if(args.Length() < n) \
-      return NanThrowError(Exception::TypeError( \
-        NanNew(__FUNCTION__" takes exactly " #n " argument(s)"))); \
-    if(!args[0]->IsString()) \
-      return NanThrowError(Exception::TypeError( \
-        NanNew(__FUNCTION__" the first argument is not a Symbol"))); \
+#define CHECK_OLE_ARGS(info, n, av0, av1) do{ \
+    if(info.Length() < n) \
+      return Nan::ThrowError(Exception::TypeError( \
+        Nan::New(__FUNCTION__" takes exactly " #n " argument(s)").ToLocalChecked())); \
+    if(!info[0]->IsString()) \
+      return Nan::ThrowError(Exception::TypeError( \
+        Nan::New(__FUNCTION__" the first argument is not a Symbol").ToLocalChecked())); \
     if(n == 1) \
-      if(args.Length() >= 2) \
-        if(!args[1]->IsArray()) \
-          return NanThrowError(Exception::TypeError(NanNew( \
-            __FUNCTION__" the second argument is not an Array"))); \
-        else av1 = args[1]; /* Array */ \
-      else av1 = NanNew<Array>(0); /* change none to Array[] */ \
-    else av1 = args[1]; /* may not be Array */ \
-    av0 = args[0]; \
+      if(info.Length() >= 2) \
+        if(!info[1]->IsArray()) \
+          return Nan::ThrowError(Exception::TypeError(Nan::New( \
+            __FUNCTION__" the second argument is not an Array").ToLocalChecked())); \
+        else av1 = info[1]; /* Array */ \
+      else av1 = Nan::New<Array>(0); /* change none to Array[] */ \
+    else av1 = info[1]; /* may not be Array */ \
+    av0 = info[0]; \
   }while(0)
 
-Persistent<FunctionTemplate> V8Variant::clazz;
+Nan::Persistent<FunctionTemplate> V8Variant::clazz;
 
 void V8Variant::Init(Handle<Object> target)
 {
-  NanScope();
-  Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
+  Local<FunctionTemplate> t = Nan::New<FunctionTemplate>(New);
   t->InstanceTemplate()->SetInternalFieldCount(2);
-  t->SetClassName(NanNew("V8Variant"));
-  NODE_SET_PROTOTYPE_METHOD(t, "isA", OLEIsA);
-  NODE_SET_PROTOTYPE_METHOD(t, "vtName", OLEVTName);
-  NODE_SET_PROTOTYPE_METHOD(t, "toBoolean", OLEBoolean);
-  NODE_SET_PROTOTYPE_METHOD(t, "toInt32", OLEInt32);
-  NODE_SET_PROTOTYPE_METHOD(t, "toInt64", OLEInt64);
-  NODE_SET_PROTOTYPE_METHOD(t, "toNumber", OLENumber);
-  NODE_SET_PROTOTYPE_METHOD(t, "toDate", OLEDate);
-  NODE_SET_PROTOTYPE_METHOD(t, "toUtf8", OLEUtf8);
-  NODE_SET_PROTOTYPE_METHOD(t, "toValue", OLEValue);
-//  NODE_SET_PROTOTYPE_METHOD(t, "New", New);
-  NODE_SET_PROTOTYPE_METHOD(t, "call", OLECall);
-  NODE_SET_PROTOTYPE_METHOD(t, "get", OLEGet);
-  NODE_SET_PROTOTYPE_METHOD(t, "set", OLESet);
+  t->SetClassName(Nan::New("V8Variant").ToLocalChecked());
+  Nan::SetPrototypeMethod(t, "isA", OLEIsA);
+  Nan::SetPrototypeMethod(t, "vtName", OLEVTName);
+  Nan::SetPrototypeMethod(t, "toBoolean", OLEBoolean);
+  Nan::SetPrototypeMethod(t, "toInt32", OLEInt32);
+  Nan::SetPrototypeMethod(t, "toInt64", OLEInt64);
+  Nan::SetPrototypeMethod(t, "toNumber", OLENumber);
+  Nan::SetPrototypeMethod(t, "toDate", OLEDate);
+  Nan::SetPrototypeMethod(t, "toUtf8", OLEUtf8);
+  Nan::SetPrototypeMethod(t, "toValue", OLEValue);
+//  Nan::SetPrototypeMethod(t, "New", New);
+  Nan::SetPrototypeMethod(t, "call", OLECall);
+  Nan::SetPrototypeMethod(t, "get", OLEGet);
+  Nan::SetPrototypeMethod(t, "set", OLESet);
 /*
  In ParseUnaryExpression() < v8/src/parser.cc >
  v8::Object::ToBoolean() is called directly for unary operator '!'
@@ -58,12 +57,12 @@ void V8Variant::Init(Handle<Object> target)
  Local<Boolean> ToBoolean(); // How to fake ? override v8::Value::ToBoolean
 */
   Local<ObjectTemplate> instancetpl = t->InstanceTemplate();
-  instancetpl->SetCallAsFunctionHandler(OLECallComplete);
-  instancetpl->SetNamedPropertyHandler(OLEGetAttr, OLESetAttr);
-//  instancetpl->SetIndexedPropertyHandler(OLEGetIdxAttr, OLESetIdxAttr);
-  NODE_SET_PROTOTYPE_METHOD(t, "Finalize", Finalize);
-  target->Set(NanNew("V8Variant"), t->GetFunction());
-  NanAssignPersistent(clazz, t);
+  Nan::SetCallAsFunctionHandler(instancetpl, OLECallComplete);
+  Nan::SetNamedPropertyHandler(instancetpl, OLEGetAttr, OLESetAttr);
+//  Nan::SetIndexedPropertyHandler(instancetpl, OLEGetIdxAttr, OLESetIdxAttr);
+  Nan::SetPrototypeMethod(t, "Finalize", Finalize);
+  Nan::Set(target, Nan::New("V8Variant").ToLocalChecked(), Nan::GetFunction(t).ToLocalChecked());
+  clazz.Reset(t);
 }
 
 std::string V8Variant::CreateStdStringMBCSfromUTF8(Handle<Value> v)
@@ -101,29 +100,23 @@ OCVariant *V8Variant::CreateOCVariant(Handle<Value> v)
   BEVERIFY(done, !v->IsFunction());
 // VT_USERDEFINED VT_VARIANT VT_BYREF VT_ARRAY more...
   if(v->IsBoolean()){
-    return new OCVariant((bool)(v->BooleanValue() ? !0 : 0));
+    return new OCVariant(Nan::To<bool>(v).FromJust());
   }else if(v->IsArray()){
 // VT_BYREF VT_ARRAY VT_SAFEARRAY
     std::cerr << "[Array (not implemented now)]" << std::endl; return NULL;
     std::cerr.flush();
   }else if(v->IsInt32()){
-    return new OCVariant((long)v->Int32Value());
-#if(0) // may not be supported node.js / v8
-  }else if(v->IsInt64()){
-    return new OCVariant((long long)v->Int64Value());
-#endif
+    return new OCVariant((long)Nan::To<int32_t>(v).FromJust());
   }else if(v->IsNumber()){
     std::cerr << "[Number (VT_R8 or VT_I8 bug?)]" << std::endl;
     std::cerr.flush();
-// if(v->ToInteger()) =64 is failed ? double : OCVariant((longlong)VT_I8)
-    return new OCVariant((double)v->NumberValue()); // double
+    return new OCVariant((double)Nan::To<int64_t>(v).FromJust()); // double
   }else if(v->IsNumberObject()){
     std::cerr << "[NumberObject (VT_R8 or VT_I8 bug?)]" << std::endl;
     std::cerr.flush();
-// if(v->ToInteger()) =64 is failed ? double : OCVariant((longlong)VT_I8)
-    return new OCVariant((double)v->NumberValue()); // double
+    return new OCVariant((double)Nan::To<int64_t>(v).FromJust()); // double
   }else if(v->IsDate()){
-    double d = v->NumberValue();
+    double d = Nan::To<int64_t>(v).FromJust();
     time_t sec = (time_t)(d / 1000.0);
     int msec = (int)(d - sec * 1000.0);
     struct tm *t = localtime(&sec); // *** must check locale ***
@@ -145,7 +138,7 @@ OCVariant *V8Variant::CreateOCVariant(Handle<Value> v)
   }else if(v->IsRegExp()){
     std::cerr << "[RegExp (bug?)]" << std::endl;
     std::cerr.flush();
-    return new OCVariant(CreateStdStringMBCSfromUTF8(v->ToDetailString()));
+    return new OCVariant(CreateStdStringMBCSfromUTF8(v));
   }else if(v->IsString()){
     return new OCVariant(CreateStdStringMBCSfromUTF8(v));
   }else if(v->IsStringObject()){
@@ -175,89 +168,82 @@ done:
 
 NAN_METHOD(V8Variant::OLEIsA)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   DISPFUNCOUT();
-  NanReturnValue(NanNew(ocv->v.vt));
+ return info.GetReturnValue().Set(Nan::New(ocv->v.vt));
 }
 
 NAN_METHOD(V8Variant::OLEVTName)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
-  Local<Object> target = NanNew(module_target);
-  Array *a = Array::Cast(*GET_PROP(target, "vt_names"));
+  Local<Object> target = Nan::New(module_target);
+  Array *a = Array::Cast(*(GET_PROP(target, "vt_names").ToLocalChecked()));
   DISPFUNCOUT();
-  NanReturnValue(ARRAY_AT(a, ocv->v.vt));
+ return info.GetReturnValue().Set(ARRAY_AT(a, ocv->v.vt));
 }
 
 NAN_METHOD(V8Variant::OLEBoolean)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_BOOL)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLEBoolean source type OCVariant is not VT_BOOL")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLEBoolean source type OCVariant is not VT_BOOL").ToLocalChecked()));
   bool c_boolVal = ocv->v.boolVal == VARIANT_FALSE ? 0 : !0;
   DISPFUNCOUT();
-  NanReturnValue(c_boolVal);
+ return info.GetReturnValue().Set(c_boolVal);
 }
 
 NAN_METHOD(V8Variant::OLEInt32)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_I4 && ocv->v.vt != VT_INT
   && ocv->v.vt != VT_UI4 && ocv->v.vt != VT_UINT)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLEInt32 source type OCVariant is not VT_I4 nor VT_INT nor VT_UI4 nor VT_UINT")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLEInt32 source type OCVariant is not VT_I4 nor VT_INT nor VT_UI4 nor VT_UINT").ToLocalChecked()));
   DISPFUNCOUT();
-  NanReturnValue(NanNew(ocv->v.lVal));
+ return info.GetReturnValue().Set(Nan::New(ocv->v.lVal));
 }
 
 NAN_METHOD(V8Variant::OLEInt64)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_I8 && ocv->v.vt != VT_UI8)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLEInt64 source type OCVariant is not VT_I8 nor VT_UI8")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLEInt64 source type OCVariant is not VT_I8 nor VT_UI8").ToLocalChecked()));
   DISPFUNCOUT();
-  NanReturnValue(NanNew<Number>(ocv->v.llVal));
+ return info.GetReturnValue().Set(Nan::New<Number>(ocv->v.llVal));
 }
 
 NAN_METHOD(V8Variant::OLENumber)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_R8)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLENumber source type OCVariant is not VT_R8")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLENumber source type OCVariant is not VT_R8").ToLocalChecked()));
   DISPFUNCOUT();
-  NanReturnValue(NanNew(ocv->v.dblVal));
+ return info.GetReturnValue().Set(Nan::New(ocv->v.dblVal));
 }
 
 NAN_METHOD(V8Variant::OLEDate)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_DATE)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLEDate source type OCVariant is not VT_DATE")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLEDate source type OCVariant is not VT_DATE").ToLocalChecked()));
   SYSTEMTIME syst;
   VariantTimeToSystemTime(ocv->v.date, &syst);
   struct tm t = {0}; // set t.tm_isdst = 0
@@ -268,37 +254,35 @@ NAN_METHOD(V8Variant::OLEDate)
   t.tm_min = syst.wMinute;
   t.tm_sec = syst.wSecond;
   DISPFUNCOUT();
-  NanReturnValue(NanNew<Date>(mktime(&t) * 1000LL + syst.wMilliseconds));
+  return info.GetReturnValue().Set(Nan::New<Date>(mktime(&t) * 1000LL + syst.wMilliseconds).ToLocalChecked());
 }
 
 NAN_METHOD(V8Variant::OLEUtf8)
 {
-  NanScope();
   DISPFUNCIN();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   if(ocv->v.vt != VT_BSTR)
-    return NanThrowError(Exception::TypeError(
-      NanNew("OLEUtf8 source type OCVariant is not VT_BSTR")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("OLEUtf8 source type OCVariant is not VT_BSTR").ToLocalChecked()));
   Handle<Value> result;
-  if(!ocv->v.bstrVal) result = NanUndefined(); // or Null();
+  if(!ocv->v.bstrVal) result = Nan::Undefined(); // or Null();
   else {
     std::wstring wstr(ocv->v.bstrVal);
     char *cs = wcs2u8s(wstr.c_str());
-    result = NanNew(cs);
+    result = Nan::New(cs).ToLocalChecked();
     free(cs);
   }
   DISPFUNCOUT();
-  NanReturnValue(result);
+ return info.GetReturnValue().Set(result);
 }
 
 NAN_METHOD(V8Variant::OLEValue)
 {
-  NanEscapableScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   OLETRACEFLUSH();
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
   OLE_PROCESS_CARRY_OVER(thisObject);
   OLETRACEVT(thisObject);
   OLETRACEFLUSH();
@@ -306,20 +290,20 @@ NAN_METHOD(V8Variant::OLEValue)
   if(!ocv){ std::cerr << "ocv is null"; std::cerr.flush(); }
   CHECK_OCV(ocv);
   if(ocv->v.vt == VT_EMPTY) ; // do nothing
-  else if (ocv->v.vt == VT_NULL) NanReturnNull();
+  else if (ocv->v.vt == VT_NULL) return info.GetReturnValue().SetNull();
   else if (ocv->v.vt == VT_DISPATCH) {
     if (ocv->v.pdispVal == NULL) {
-      NanReturnNull();
+      return info.GetReturnValue().SetNull();
     }
-    NanReturnValue(thisObject); // through it
+    return info.GetReturnValue().Set(thisObject); // through it
   }
-  else if(ocv->v.vt == VT_BOOL) OLEBoolean(args);
+  else if(ocv->v.vt == VT_BOOL) OLEBoolean(info);
   else if(ocv->v.vt == VT_I4 || ocv->v.vt == VT_INT
-  || ocv->v.vt == VT_UI4 || ocv->v.vt == VT_UINT) OLEInt32(args);
-  else if(ocv->v.vt == VT_I8 || ocv->v.vt == VT_UI8) OLEInt64(args);
-  else if(ocv->v.vt == VT_R8) OLENumber(args);
-  else if(ocv->v.vt == VT_DATE) OLEDate(args);
-  else if(ocv->v.vt == VT_BSTR) OLEUtf8(args);
+  || ocv->v.vt == VT_UI4 || ocv->v.vt == VT_UINT) OLEInt32(info);
+  else if(ocv->v.vt == VT_I8 || ocv->v.vt == VT_UI8) OLEInt64(info);
+  else if(ocv->v.vt == VT_R8) OLENumber(info);
+  else if(ocv->v.vt == VT_DATE) OLEDate(info);
+  else if(ocv->v.vt == VT_BSTR) OLEUtf8(info);
   else if(ocv->v.vt == VT_ARRAY || ocv->v.vt == VT_SAFEARRAY){
     std::cerr << "[Array (not implemented now)]" << std::endl;
     std::cerr.flush();
@@ -348,7 +332,7 @@ static std::string GetName(ITypeInfo *typeinfo, MEMBERID id) {
  * to actual JS objects. This enables things like console.log().
  **/
 NAN_METHOD(V8Variant::OLEPrimitiveValue) {
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
   OLE_PROCESS_CARRY_OVER(thisObject);
   OLETRACEVT(thisObject);
   OLETRACEFLUSH();
@@ -357,9 +341,9 @@ NAN_METHOD(V8Variant::OLEPrimitiveValue) {
   if (ocv->v.vt == VT_DISPATCH) {
     IDispatch *dispatch = ocv->v.pdispVal;
     if (dispatch == NULL) {
-      NanReturnNull();
+      return info.GetReturnValue().SetNull();
     }
-    Local<Object> object = NanNew<Object>();
+    Local<Object> object = Nan::New<Object>();
     ITypeInfo *typeinfo = NULL;
     HRESULT hr = dispatch->GetTypeInfo(0, LOCALE_USER_DEFAULT, &typeinfo);
     if (typeinfo) {
@@ -369,56 +353,56 @@ NAN_METHOD(V8Variant::OLEPrimitiveValue) {
         FUNCDESC *funcdesc;
         typeinfo->GetFuncDesc(i, &funcdesc);
         if (funcdesc->invkind != INVOKE_FUNC) {
-          object->Set(NanNew(GetName(typeinfo, funcdesc->memid)), NanNew("Function"));
+          Nan::Set(object, Nan::New(GetName(typeinfo, funcdesc->memid)).ToLocalChecked(), Nan::New("Function").ToLocalChecked());
         }
         typeinfo->ReleaseFuncDesc(funcdesc);
       }
       for (int i = 0; i < typeattr->cVars; i++) {
         VARDESC *vardesc;
         typeinfo->GetVarDesc(i, &vardesc);
-        object->Set(NanNew(GetName(typeinfo, vardesc->memid)), NanNew("Variable"));
+        Nan::Set(object, Nan::New(GetName(typeinfo, vardesc->memid)).ToLocalChecked(), Nan::New("Variable").ToLocalChecked());
         typeinfo->ReleaseVarDesc(vardesc);
       }
       typeinfo->ReleaseTypeAttr(typeattr);
     }
-    NanReturnValue(object);
+    return info.GetReturnValue().Set(object);
   } else {
-    V8Variant::OLEValue(args);
+    V8Variant::OLEValue(info);
   }
 }
 
 Handle<Object> V8Variant::CreateUndefined(void)
 {
   DISPFUNCIN();
-  Local<FunctionTemplate> localClazz = NanNew(clazz);
-  Local<Object> instance = localClazz->GetFunction()->NewInstance(0, NULL);
+  Local<FunctionTemplate> localClazz = Nan::New(clazz);
+  Local<Object> instance = Nan::NewInstance(Nan::GetFunction(localClazz).ToLocalChecked(), 0, NULL).ToLocalChecked();
   DISPFUNCOUT();
   return instance;
 }
 
 NAN_METHOD(V8Variant::New)
 {
-  NanScope();
   DISPFUNCIN();
-  if(!args.IsConstructCall())
-    return NanThrowError(Exception::TypeError(
-      NanNew("Use the new operator to create new V8Variant objects")));
+  if(!info.IsConstructCall())
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("Use the new operator to create new V8Variant objects").ToLocalChecked()));
   OCVariant *ocv = new OCVariant();
   CHECK_OCV(ocv);
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
   V8Variant *v = new V8Variant(); // must catch exception
   v->Wrap(thisObject); // InternalField[0]
   thisObject->SetInternalField(1, ExternalNew(ocv));
-  NanMakeWeakPersistent(thisObject, ocv, Dispose);
+  // IDK
+  // thisObject.SetWeak(ocv, Dispose);
   DISPFUNCOUT();
-  NanReturnThis();
+ return info.GetReturnValue().Set(thisObject);
 }
 
 Handle<Value> V8Variant::OLEFlushCarryOver(Handle<Value> v)
 {
   OLETRACEIN();
   OLETRACEVT(v->ToObject());
-  Handle<Value> result = NanUndefined();
+  Handle<Value> result = Nan::Undefined();
   V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(v->ToObject());
   if(v8v->property_carryover.empty()){
     std::cerr << " *** carryover empty *** " << __FUNCTION__ << std::endl;
@@ -427,11 +411,11 @@ Handle<Value> V8Variant::OLEFlushCarryOver(Handle<Value> v)
   }else{
     const char *name = v8v->property_carryover.c_str();
     {
-      OLETRACEPREARGV(NanNew(name));
+      OLETRACEPREARGV(Nan::New(name).ToLocalChecked());
       OLETRACEARGV();
     }
     OLETRACEFLUSH();
-    Handle<Value> argv[] = {NanNew(name), NanNew<Array>(0)};
+    Handle<Value> argv[] = {Nan::New(name).ToLocalChecked(), Nan::New<Array>(0)};
     int argc = sizeof(argv) / sizeof(argv[0]);
     v8v->property_carryover.erase();
     result = INSTANCE_CALL(v->ToObject(), "call", argc, argv);
@@ -448,15 +432,14 @@ Handle<Value> V8Variant::OLEFlushCarryOver(Handle<Value> v)
 template<bool isCall>
 NAN_METHOD(OLEInvoke)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   OLETRACEARGS();
   OLETRACEFLUSH();
-  OCVariant *ocv = castedInternalField<OCVariant>(args.This());
+  OCVariant *ocv = castedInternalField<OCVariant>(info.This());
   CHECK_OCV(ocv);
   Handle<Value> av0, av1;
-  CHECK_OLE_ARGS(args, 1, av0, av1);
+  CHECK_OLE_ARGS(info, 1, av0, av1);
   OCVariant *argchain = NULL;
   Array *a = Array::Cast(*av1);
   for(size_t i = 0; i < a->Length(); ++i){
@@ -485,52 +468,49 @@ NAN_METHOD(OLEInvoke)
   free(wcs); // *** it may leak when error ***
   Handle<Value> result = INSTANCE_CALL(vResult, "toValue", 0, NULL);
   OLETRACEOUT();
-  NanReturnValue(result);
+  return info.GetReturnValue().Set(result);
 done:
   OLETRACEOUT();
-  NanThrowError(Exception::TypeError(
-    NanNew(__FUNCTION__" failed")));
+  Nan::ThrowError(Exception::TypeError(
+    Nan::New(__FUNCTION__" failed").ToLocalChecked()));
 }
 
 NAN_METHOD(V8Variant::OLECall)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   OLETRACEARGS();
   OLETRACEFLUSH();
-  OLEInvoke<true>(args);
+  OLEInvoke<true>(info);
   OLETRACEOUT();
 }
 
 NAN_METHOD(V8Variant::OLEGet)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   OLETRACEARGS();
   OLETRACEFLUSH();
-  OLEInvoke<false>(args);
+  OLEInvoke<false>(info);
   OLETRACEOUT();
 }
 
 NAN_METHOD(V8Variant::OLESet)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   OLETRACEARGS();
   OLETRACEFLUSH();
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
   OLE_PROCESS_CARRY_OVER(thisObject);
   OCVariant *ocv = castedInternalField<OCVariant>(thisObject);
   CHECK_OCV(ocv);
   Handle<Value> av0, av1;
-  CHECK_OLE_ARGS(args, 2, av0, av1);
+  CHECK_OLE_ARGS(info, 2, av0, av1);
   OCVariant *argchain = V8Variant::CreateOCVariant(av1);
   if(!argchain)
-    return NanThrowError(Exception::TypeError(NanNew(
-      __FUNCTION__" the second argument is not valid (null OCVariant)")));
+    return Nan::ThrowError(Exception::TypeError(Nan::New(
+      __FUNCTION__" the second argument is not valid (null OCVariant)").ToLocalChecked()));
   bool result = false;
   String::Utf8Value u8s(av0);
   wchar_t *wcs = u8s2wcs(*u8s);
@@ -543,20 +523,19 @@ NAN_METHOD(V8Variant::OLESet)
   free(wcs); // *** it may leak when error ***
   result = true;
   OLETRACEOUT();
-  NanReturnValue(result);
+  return info.GetReturnValue().Set(result);
 done:
   OLETRACEOUT();
-  NanThrowError(Exception::TypeError(
-    NanNew(__FUNCTION__" failed")));
+  Nan::ThrowError(Exception::TypeError(
+    Nan::New(__FUNCTION__" failed").ToLocalChecked()));
 }
 
 NAN_METHOD(V8Variant::OLECallComplete)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
-  Handle<Value> result = NanUndefined();
-  V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(args.This());
+  OLETRACEVT(info.This());
+  Handle<Value> result = Nan::Undefined();
+  V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(info.This());
   if(v8v->property_carryover.empty()){
     std::cerr << " *** carryover empty *** " << __FUNCTION__ << std::endl;
     std::cerr.flush();
@@ -564,36 +543,35 @@ NAN_METHOD(V8Variant::OLECallComplete)
   }else{
     const char *name = v8v->property_carryover.c_str();
     {
-      OLETRACEPREARGV(NanNew(name));
+      OLETRACEPREARGV(Nan::New(name).ToLocalChecked());
       OLETRACEARGV();
     }
     OLETRACEARGS();
     OLETRACEFLUSH();
-    Handle<Array> a = NanNew<Array>(args.Length());
-    for(int i = 0; i < args.Length(); ++i) ARRAY_SET(a, i, args[i]);
-    Handle<Value> argv[] = {NanNew(name), a};
+    Handle<Array> a = Nan::New<Array>(info.Length());
+    for(int i = 0; i < info.Length(); ++i) ARRAY_SET(a, i, info[i]);
+    Handle<Value> argv[] = {Nan::New(name).ToLocalChecked(), a};
     int argc = sizeof(argv) / sizeof(argv[0]);
     v8v->property_carryover.erase();
-    result = INSTANCE_CALL(args.This(), "call", argc, argv);
+    result = INSTANCE_CALL(info.This(), "call", argc, argv);
   }
 //_
 //Handle<Value> r = INSTANCE_CALL(Handle<Object>::Cast(v), "toValue", 0, NULL);
   OLETRACEOUT();
-  NanReturnValue(result);
+ return info.GetReturnValue().Set(result);
 }
 
 NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   {
     OLETRACEPREARGV(property);
     OLETRACEARGV();
   }
   OLETRACEFLUSH();
   String::Utf8Value u8name(property);
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
 
   // Why GetAttr comes twice for () in the third loop instead of CallComplete ?
   // Because of the Crankshaft v8's run-time optimizer ?
@@ -602,7 +580,7 @@ NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
     if(!v8v->property_carryover.empty()){
       if(v8v->property_carryover == *u8name){
         OLETRACEOUT();
-        NanReturnValue(thisObject); // through it
+        return info.GetReturnValue().Set(thisObject); // through it
       }
     }
   }
@@ -660,8 +638,8 @@ NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
     }
     OLETRACEFLUSH();
     OLETRACEOUT();
-    NanReturnValue(NanNew<FunctionTemplate>(
-      fundamentals[i].func, thisObject)->GetFunction());
+    return info.GetReturnValue().Set(Nan::GetFunction(Nan::New<FunctionTemplate>(
+      fundamentals[i].func, thisObject)).ToLocalChecked());
   }
   if(std::string("_") == *u8name){ // through it when "_"
 #if(0)
@@ -681,36 +659,34 @@ NAN_PROPERTY_GETTER(V8Variant::OLEGetAttr)
     OLETRACEARGV();
     OLETRACEFLUSH();
     OLETRACEOUT();
-    NanReturnValue(vResult); // convert and hold it (uses much memory)
+    return info.GetReturnValue().Set(vResult); // convert and hold it (uses much memory)
   }
   OLETRACEFLUSH();
   OLETRACEOUT();
-  NanReturnValue(thisObject); // through it
+ return info.GetReturnValue().Set(thisObject); // through it
 }
 
 NAN_PROPERTY_SETTER(V8Variant::OLESetAttr)
 {
-  NanScope();
   OLETRACEIN();
-  OLETRACEVT(args.This());
+  OLETRACEVT(info.This());
   Handle<Value> argv[] = {property, value};
   int argc = sizeof(argv) / sizeof(argv[0]);
   OLETRACEARGV();
   OLETRACEFLUSH();
-  Handle<Value> r = INSTANCE_CALL(args.This(), "set", argc, argv);
+  Handle<Value> r = INSTANCE_CALL(info.This(), "set", argc, argv);
   OLETRACEOUT();
-  NanReturnValue(r);
+ return info.GetReturnValue().Set(r);
 }
 
 NAN_METHOD(V8Variant::Finalize)
 {
-  NanScope();
   DISPFUNCIN();
 #if(0)
   std::cerr << __FUNCTION__ << " Finalizer is called\a" << std::endl;
   std::cerr.flush();
 #endif
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
 #if(0)
   V8Variant *v = ObjectWrap::Unwrap<V8Variant>(thisObject);
   if(v) delete v; // it has been already deleted ?
@@ -722,10 +698,11 @@ NAN_METHOD(V8Variant::Finalize)
 #endif
   thisObject->SetInternalField(1, ExternalNew(NULL));
   DISPFUNCOUT();
-  NanReturnThis();
+ return info.GetReturnValue().Set(thisObject);
 }
 
-NAN_WEAK_CALLBACK(V8Variant::Dispose)
+template<typename T>
+void V8Variant::Dispose(const Nan::WeakCallbackInfo<T> &data)
 {
   DISPFUNCIN();
 #if(0)

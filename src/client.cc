@@ -12,40 +12,38 @@ using namespace ole32core;
 
 namespace node_win32ole {
 
-Persistent<FunctionTemplate> Client::clazz;
+Nan::Persistent<FunctionTemplate> Client::clazz;
 
 void Client::Init(Handle<Object> target)
 {
-  NanScope();
-  Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
+  Local<FunctionTemplate> t = Nan::New<FunctionTemplate>(New);
   t->InstanceTemplate()->SetInternalFieldCount(2);
-  t->SetClassName(NanNew("Client"));
-//  NODE_SET_PROTOTYPE_METHOD(clazz, "New", New);
-  NODE_SET_PROTOTYPE_METHOD(t, "Dispatch", Dispatch);
-  NODE_SET_PROTOTYPE_METHOD(t, "Finalize", Finalize);
-  target->Set(NanNew("Client"), t->GetFunction());
-  NanAssignPersistent(clazz, t);
+  t->SetClassName(Nan::New("Client").ToLocalChecked());
+//  Nan::SetPrototypeMethod(clazz, "New", New);
+  Nan::SetPrototypeMethod(t, "Dispatch", Dispatch);
+  Nan::SetPrototypeMethod(t, "Finalize", Finalize);
+  Nan::Set(target, Nan::New("Client").ToLocalChecked(), Nan::GetFunction(t).ToLocalChecked());
+  clazz.Reset(t);
 }
 
 NAN_METHOD(Client::New)
 {
-  NanScope();
   DISPFUNCIN();
-  if(!args.IsConstructCall())
-    return NanThrowError(Exception::TypeError(
-      NanNew("Use the new operator to create new Client objects")));
+  if(!info.IsConstructCall())
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("Use the new operator to create new Client objects").ToLocalChecked()));
   std::string cstr_locale(".ACP"); // default
-  if(args.Length() >= 1){
-    if(!args[0]->IsString())
-      return NanThrowError(Exception::TypeError(
-        NanNew("Argument 1 is not a String")));
-    String::Utf8Value u8s_locale(args[0]);
+  if(info.Length() >= 1){
+    if(!info[0]->IsString())
+      return Nan::ThrowError(Exception::TypeError(
+        Nan::New("Argument 1 is not a String").ToLocalChecked()));
+    String::Utf8Value u8s_locale(info[0]);
     cstr_locale = std::string(*u8s_locale);
   }
   OLE32core *oc = new OLE32core();
   if(!oc)
-    return NanThrowError(Exception::TypeError(
-      NanNew("Can't create new Client object (null OLE32core)")));
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("Can't create new Client object (null OLE32core)").ToLocalChecked()));
   bool cnresult = false;
   try{
     cnresult = oc->connect(cstr_locale);
@@ -55,26 +53,26 @@ NAN_METHOD(Client::New)
     std::cerr << e << cstr_locale.c_str() << std::endl;
   }
   if(!cnresult)
-    return NanThrowError(Exception::TypeError(
-      NanNew("May be CoInitialize() is failed.")));
-  Local<Object> thisObject = args.This();
+    return Nan::ThrowError(Exception::TypeError(
+      Nan::New("May be CoInitialize() is failed.").ToLocalChecked()));
+  Local<Object> thisObject = info.This();
   Client *cl = new Client(); // must catch exception
   cl->Wrap(thisObject); // InternalField[0]
-  thisObject->SetInternalField(1, NanNew<External>(oc));
-  NanMakeWeakPersistent(thisObject, oc, Dispose);
+  thisObject->SetInternalField(1, Nan::New<External>(oc));
+  // dunno what to do with this
+  // thisObject.SetWeak(oc, Dispose);
   DISPFUNCOUT();
-  NanReturnValue(args.This());
+ return info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(Client::Dispatch)
 {
-  NanScope();
   DISPFUNCIN();
-  BEVERIFY(done, args.Length() >= 1);
-  BEVERIFY(done, args[0]->IsString());
+  BEVERIFY(done, info.Length() >= 1);
+  BEVERIFY(done, info[0]->IsString());
   wchar_t *wcs;
   {
-    String::Utf8Value u8s(args[0]); // must create here
+    String::Utf8Value u8s(info[0]); // must create here
     wcs = u8s2wcs(*u8s);
   }
   BEVERIFY(done, wcs);
@@ -127,23 +125,22 @@ NAN_METHOD(Client::Dispatch)
   if(FAILED(hr)) BDISPFUNCDAT("FAILED CoCreateInstance: %d: 0x%08x\n", 1, hr);
   BEVERIFY(done, !FAILED(hr));
   DISPFUNCOUT();
-  NanReturnValue(vApp);
+  return info.GetReturnValue().Set(vApp);
 done:
   DISPFUNCOUT();
-  NanThrowError(Exception::TypeError(NanNew("Dispatch failed")));
+  Nan::ThrowError(Exception::TypeError(Nan::New("Dispatch failed").ToLocalChecked()));
 }
 
 NAN_METHOD(Client::Finalize)
 {
-  NanScope();
   DISPFUNCIN();
 #if(0)
   std::cerr << __FUNCTION__ << " Finalizer is called\a" << std::endl;
   std::cerr.flush();
 #endif
-  Local<Object> thisObject = args.This();
+  Local<Object> thisObject = info.This();
 #if(0)
-  Client *cl = ObjectWrap::Unwrap<Client>(thisObject);
+  Client *cl = node::ObjectWrap::Unwrap<Client>(thisObject);
   if(cl) delete cl; // it has been already deleted ?
   thisObject->SetInternalField(0, External::New(NULL));
 #endif
@@ -159,10 +156,11 @@ NAN_METHOD(Client::Finalize)
 #endif
   thisObject->SetInternalField(1, ExternalNew(NULL));
   DISPFUNCOUT();
-  NanReturnValue(args.This());
+ return info.GetReturnValue().Set(info.This());
 }
 
-NAN_WEAK_CALLBACK(Client::Dispose)
+template<typename T>
+void Client::Dispose(const Nan::WeakCallbackInfo<T> &data)
 {
   Handle<Object> handle = data.GetValue();
   DISPFUNCIN();
@@ -173,7 +171,7 @@ NAN_WEAK_CALLBACK(Client::Dispose)
 #endif
   Local<Object> thisObject = handle->ToObject();
 #if(0) // it has been already deleted ?
-  Client *cl = ObjectWrap::Unwrap<Client>(thisObject);
+  Client *cl = node::ObjectWrap::Unwrap<Client>(thisObject);
   if(!cl){
     std::cerr << __FUNCTION__;
     std::cerr << " InternalField[0] has been already deleted" << std::endl;

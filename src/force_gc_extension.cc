@@ -20,30 +20,29 @@ NAN_METHOD(Method_force_gc_extension) // v8/gc : gc()
   ExtensionConfiguration extensions(
     sizeof(extensionNames) / sizeof(extensionNames[0]), extensionNames);
   Handle<ObjectTemplate> global = ObjectTemplate::New();
-  Local<Context> context = NanNew<Context>(&extensions, global);
+  Local<Context> context = Nan::New<Context>(&extensions, global);
   Context::Scope context_scope(context);
   BDISPFUNCDAT("context %s "__FUNCTION__" %s\n", "preset", "end");
-  NanScope();
   BDISPFUNCIN();
-  Local<String> sourceObj = NanNew("gc()");
-  TryCatch try_catch;
+  Local<String> sourceObj = Nan::New("gc()").ToLocalChecked();
+  Nan::TryCatch try_catch;
   Local<Script> scriptObj = Script::Compile(sourceObj);
   if(scriptObj.IsEmpty()){
     std::string msg("Can't compile v8/gc : gc();\n");
     String::Utf8Value u8s(try_catch.Exception());
     msg += *u8s;
-    return NanThrowError(Exception::TypeError(NanNew(msg.c_str())));
+    return Nan::ThrowError(Exception::TypeError(Nan::New(msg.c_str()).ToLocalChecked()));
   }
   Local<Value> local_result = scriptObj->Run();
   if(local_result.IsEmpty()){
     std::string msg("Can't get execution result of v8/gc : gc();\n");
     String::Utf8Value u8s(try_catch.Exception());
     msg += *u8s;
-    return NanThrowError(Exception::TypeError(NanNew(msg.c_str())));
+    return Nan::ThrowError(Exception::TypeError(Nan::New(msg.c_str()).ToLocalChecked()));
   }
   String::Utf8Value result(local_result);
   BDISPFUNCOUT();
-  NanReturnValue(NanNew(*result));
+ return info.GetReturnValue().Set(Nan::New(*result).ToLocalChecked());
 }
 
 } // namespace node_win32ole

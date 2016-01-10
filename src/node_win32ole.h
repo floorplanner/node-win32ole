@@ -12,8 +12,8 @@ namespace node_win32ole {
 
 #define CHECK_OCV(ocv) do{ \
     if(!(ocv)) \
-      NanThrowError(Exception::TypeError(NanNew( \
-        __FUNCTION__" can't access to V8Variant (null OCVariant)"))); \
+      Nan::ThrowError(Exception::TypeError(Nan::New( \
+        __FUNCTION__" can't access to V8Variant (null OCVariant)").ToLocalChecked())); \
   }while(0)
 
 #if(DEBUG)
@@ -35,18 +35,18 @@ namespace node_win32ole {
     for(int i = 0; i < argc; ++i) OLETRACEARG(argv[i]); \
   }while(0)
 #define OLETRACEARGS() do{ \
-    for(int i = 0; i < args.Length(); ++i) OLETRACEARG(args[i]); \
+    for(int i = 0; i < info.Length(); ++i) OLETRACEARG(info[i]); \
   }while(0)
 #define OLETRACEFLUSH() do{ std::cerr<<std::endl; std::cerr.flush(); }while(0)
 #define OLETRACEOUT() BDISPFUNCOUT()
 #define OLE_PROCESS_CARRY_OVER(th) do{ \
-    V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(th); \
+    V8Variant *v8v = node::ObjectWrap::Unwrap<V8Variant>(th); \
     if(v8v->property_carryover.empty()) break; \
     Handle<Value> r = V8Variant::OLEFlushCarryOver(th); \
     if(!r->IsObject()){ \
       std::cerr << "** CarryOver primitive ** " << __FUNCTION__ << std::endl; \
       std::cerr.flush(); \
-      NanReturnValue(r); \
+      return info.GetReturnValue().Set(r); \
     } \
     th = r->ToObject(); \
   }while(0)
@@ -60,21 +60,21 @@ namespace node_win32ole {
 #define OLETRACEFLUSH()
 #define OLETRACEOUT()
 #define OLE_PROCESS_CARRY_OVER(th) do{ \
-    V8Variant *v8v = ObjectWrap::Unwrap<V8Variant>(th); \
+    V8Variant *v8v = node::ObjectWrap::Unwrap<V8Variant>(th); \
     if(v8v->property_carryover.empty()) break; \
     Handle<Value> r = V8Variant::OLEFlushCarryOver(th); \
-    if(!r->IsObject()) NanReturnValue(r); \
+    if(!r->IsObject()) return info.GetReturnValue().Set(r); \
     th = r->ToObject(); \
   }while(0)
 #endif
 
-#define GET_PROP(obj, prop) (obj)->Get(NanNew<String>(prop))
+#define GET_PROP(obj, prop) Nan::Get((obj), Nan::New<String>(prop).ToLocalChecked())
 
-#define ARRAY_AT(a, i) (a)->Get(NanNew<String>(to_s(i).c_str()))
-#define ARRAY_SET(a, i, v) (a)->Set(NanNew<String>(to_s(i).c_str()), (v))
+#define ARRAY_AT(a, i) a->Get(Nan::New<String>(to_s(i).c_str()).ToLocalChecked())
+#define ARRAY_SET(a, i, v) Nan::Set((a), Nan::New<String>(to_s(i).c_str()).ToLocalChecked(), (v))
 
 #define INSTANCE_CALL(obj, method, argc, argv) Handle<Function>::Cast( \
-  GET_PROP((obj), (method)))->Call((obj), (argc), (argv))
+  GET_PROP((obj), (method)).ToLocalChecked())->Call((obj), (argc), (argv))
 
 template <class T> T *castedInternalField(Handle<Object> object, int fidx=1)
 {
@@ -82,7 +82,7 @@ template <class T> T *castedInternalField(Handle<Object> object, int fidx=1)
     Local<External>::Cast(object->GetInternalField(fidx))->Value());
 }
 
-extern Persistent<Object> module_target;
+extern Nan::Persistent<Object> module_target;
 
 NAN_METHOD(Method_gettimeofday);
 NAN_METHOD(Method_sleep); // ms, bool: msg, bool: \n

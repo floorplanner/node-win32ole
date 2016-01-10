@@ -11,16 +11,17 @@ namespace node_win32ole {
 
 class Client : public node::ObjectWrap {
 public:
-  static Persistent<FunctionTemplate> clazz;
+  static Nan::Persistent<FunctionTemplate> clazz;
   static void Init(Handle<Object> target);
   static NAN_METHOD(New);
   static NAN_METHOD(Dispatch);
   static NAN_METHOD(Finalize);
 public:
-  Client() : node::ObjectWrap(), finalized(false) {}
+  Client() : finalized(false) {}
   ~Client() { if(!finalized) Finalize(); }
 protected:
-  NAN_WEAK_CALLBACK(Dispose);
+  template<typename T>
+  void Dispose(const Nan::WeakCallbackInfo<T> &data);
   void Finalize();
 protected:
   bool finalized;
