@@ -97,7 +97,9 @@ OCVariant *V8Variant::CreateOCVariant(Handle<Value> v)
   BEVERIFY(done, !v.IsEmpty());
   BEVERIFY(done, !v->IsExternal());
   BEVERIFY(done, !v->IsNativeError());
-  BEVERIFY(done, !v->IsFunction());
+// NOTE: commenting the following fixes for node 6 / v8
+//       needs investigaton v->IsFunction deprecated?
+//  BEVERIFY(done, !v->IsFunction());
 // VT_USERDEFINED VT_VARIANT VT_BYREF VT_ARRAY more...
   if(v->IsBoolean()){
     return new OCVariant(Nan::To<bool>(v).FromJust());
